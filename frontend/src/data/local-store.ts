@@ -48,6 +48,17 @@ export function saveRows(key: string, rows: EntryRow[]): void {
   }
 }
 
+// 多模块一次写入：先整体序列化再一次落盘，任何一步抛错都不动缓存，
+// 调用方据此实现「任一写入失败一起退回」。
+export function saveRowsAtomic(updates: Record<string, EntryRow[]>): void {
+  const next = { ...allRows(), ...updates }
+  const payload = JSON.stringify(next)
+  if (typeof window !== 'undefined' && window.localStorage) {
+    window.localStorage.setItem(STORAGE_KEY, payload)
+  }
+  cache = next
+}
+
 export function resetRows(key: string): EntryRow[] {
   const rows = clone(SEED_ROWS[key] ?? [])
   saveRows(key, rows)
