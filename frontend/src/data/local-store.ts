@@ -54,6 +54,24 @@ export function resetRows(key: string): EntryRow[] {
   return rows
 }
 
+// 跨模块事务：mutator 里可以写多个模块，任何一步抛错就把缓存和 localStorage 一起退回快照。
+export function runAtomic(mutator: () => void): void {
+  const snapshot = clone(allRows())
+  try {
+    mutator()
+  } catch (error) {
+    cache = snapshot
+    if (typeof window !== 'undefined' && window.localStorage) {
+      try {
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot))
+      } catch {
+        // 回退写入也失败时至少保住内存快照，界面重载后仍以快照为准。
+      }
+    }
+    throw error
+  }
+}
+
 export function storageKey(): string {
   return STORAGE_KEY
 }
